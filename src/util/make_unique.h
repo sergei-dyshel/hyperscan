@@ -29,6 +29,12 @@
 #ifndef UTIL_MAKE_UNIQUE_H
 #define UTIL_MAKE_UNIQUE_H
 
+#include <memory>
+namespace ue2 {
+using std::make_unique;
+}
+
+#if 0
 #if (defined(_WIN32) || defined(_WIN64)) && (_MSC_VER > 1700)
 // VC++ 2013 onwards has make_unique in the STL
 #define USE_STD
@@ -46,4 +52,6 @@ using boost::make_unique;
 }
 
 #undef USE_STD
+#endif
+
 #endif // UTIL_MAKE_UNIQUE_H

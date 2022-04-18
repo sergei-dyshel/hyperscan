@@ -1,10 +1,13 @@
-cmake_minimum_required (VERSION 2.8.11)
-project (hyperscan C CXX)
+cmake_minimum_required (VERSION 3.12)
 
 set (HS_MAJOR_VERSION 5)
 set (HS_MINOR_VERSION 4)
 set (HS_PATCH_VERSION 0)
 set (HS_VERSION ${HS_MAJOR_VERSION}.${HS_MINOR_VERSION}.${HS_PATCH_VERSION})
+
+project (hyperscan 
+        VERSION ${HS_VERSION} 
+        LANGUAGES C CXX)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(CheckCCompilerFlag)
@@ -64,16 +67,16 @@ if (XCODE OR CMAKE_CXX_COMPILER_ID MATCHES "Intel")
     set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem")
 endif ()
 
-set(CMAKE_INCLUDE_CURRENT_DIR 1)
-include_directories(${PROJECT_SOURCE_DIR}/src)
-include_directories(${PROJECT_BINARY_DIR})
-include_directories(SYSTEM include)
+#set(CMAKE_INCLUDE_CURRENT_DIR 1)
+#include_directories(${PROJECT_SOURCE_DIR}/src)
+#include_directories(${PROJECT_BINARY_DIR})
+#include_directories(SYSTEM include)
 
 include (${CMAKE_MODULE_PATH}/boost.cmake)
 
 # -- make this work? set(python_ADDITIONAL_VERSIONS 2.7 2.6)
 find_package(PythonInterp)
-find_program(RAGEL ragel)
+find_program(RAGEL ragel ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(PYTHONINTERP_FOUND)
     set(PYTHON ${PYTHON_EXECUTABLE})
@@ -463,8 +466,8 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
 
-add_subdirectory(util)
-add_subdirectory(doc/dev-reference)
+#add_subdirectory(util)
+#add_subdirectory(doc/dev-reference)
 
 if (NOT WIN32)
 # PCRE check, we have a fixed requirement for PCRE to use Chimera
@@ -478,17 +481,17 @@ if (NOT CORRECT_PCRE_VERSION)
 endif()
 
 # we need static libs for Chimera - too much deep magic for shared libs
-if (CORRECT_PCRE_VERSION AND PCRE_BUILD_SOURCE AND BUILD_STATIC_LIBS)
-    set(BUILD_CHIMERA TRUE)
-endif()
-
-add_subdirectory(unit)
-if (EXISTS ${CMAKE_SOURCE_DIR}/tools/CMakeLists.txt)
-    add_subdirectory(tools)
-endif()
-if (EXISTS ${CMAKE_SOURCE_DIR}/chimera/CMakeLists.txt AND BUILD_CHIMERA)
-    add_subdirectory(chimera)
-endif()
+#if (CORRECT_PCRE_VERSION AND PCRE_BUILD_SOURCE AND BUILD_STATIC_LIBS)
+#    set(BUILD_CHIMERA TRUE)
+#endif()
+#
+#add_subdirectory(unit)
+#if (EXISTS ${CMAKE_SOURCE_DIR}/tools/CMakeLists.txt)
+#    add_subdirectory(tools)
+#endif()
+#if (EXISTS ${CMAKE_SOURCE_DIR}/chimera/CMakeLists.txt AND BUILD_CHIMERA)
+#    add_subdirectory(chimera)
+#endif()
 endif()
 
 # do substitutions
@@ -504,9 +507,9 @@ if (NOT WIN32)
         endif()
     endforeach()
 
-    configure_file(libhs.pc.in libhs.pc @ONLY) # only replace @ quoted vars
-    install(FILES ${CMAKE_BINARY_DIR}/libhs.pc
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+    #configure_file(libhs.pc.in libhs.pc @ONLY) # only replace @ quoted vars
+    #install(FILES ${CMAKE_BINARY_DIR}/libhs.pc
+    #    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 endif()
 
 # only set these after all tests are done
@@ -530,17 +533,17 @@ if (NOT CORRECT_PCRE_VERSION)
 endif()
 
 # we need static libs for Chimera - too much deep magic for shared libs
-if (CORRECT_PCRE_VERSION AND PCRE_BUILD_SOURCE AND BUILD_STATIC_LIBS)
-    set(BUILD_CHIMERA TRUE)
-endif()
-
-add_subdirectory(unit)
-if (EXISTS ${CMAKE_SOURCE_DIR}/tools/CMakeLists.txt)
-    add_subdirectory(tools)
-endif()
-if (EXISTS ${CMAKE_SOURCE_DIR}/chimera/CMakeLists.txt AND BUILD_CHIMERA)
-    add_subdirectory(chimera)
-endif()
+#if (CORRECT_PCRE_VERSION AND PCRE_BUILD_SOURCE AND BUILD_STATIC_LIBS)
+#    set(BUILD_CHIMERA TRUE)
+#endif()
+#
+#add_subdirectory(unit)
+#if (EXISTS ${CMAKE_SOURCE_DIR}/tools/CMakeLists.txt)
+#    add_subdirectory(tools)
+#endif()
+#if (EXISTS ${CMAKE_SOURCE_DIR}/chimera/CMakeLists.txt AND BUILD_CHIMERA)
+#    add_subdirectory(chimera)
+#endif()
 endif()
 
 if(NOT WIN32)
@@ -561,13 +564,20 @@ set_source_files_properties(
 
 ragelmaker(src/parser/control_verbs.rl)
 
+set(hs_include_dirs 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 SET(hs_HEADERS
     src/hs.h
     src/hs_common.h
     src/hs_compile.h
     src/hs_runtime.h
 )
-install(FILES ${hs_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/hs")
+#install(FILES ${hs_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/hs")
 
 set (hs_exec_common_SRCS
     src/alloc.c
@@ -1179,6 +1189,7 @@ if (NOT FAT_RUNTIME)
 
     if (BUILD_STATIC_LIBS)
         add_library(hs_exec OBJECT ${hs_exec_SRCS})
+        target_include_directories(hs_exec SYSTEM PUBLIC ${hs_include_dirs})
 
         add_library(hs_runtime STATIC src/hs_version.c src/hs_valid_platform.c $<TARGET_OBJECTS:hs_exec>)
         set_target_properties(hs_runtime PROPERTIES LINKER_LANGUAGE C)
@@ -1190,6 +1201,7 @@ if (NOT FAT_RUNTIME)
             src/hs_valid_platform.c
             $<TARGET_OBJECTS:hs_exec>
             $<TARGET_OBJECTS:hs_compile>)
+        
     endif (BUILD_STATIC_LIBS)
 
     if (BUILD_STATIC_AND_SHARED OR BUILD_SHARED_LIBS)
@@ -1213,6 +1225,8 @@ else (FAT_RUNTIME)
 
     if (BUILD_STATIC_LIBS)
        add_library(hs_exec_core2 OBJECT ${hs_exec_SRCS})
+       target_include_directories(hs_exec_core2 SYSTEM PUBLIC ${hs_include_dirs})
+
        list(APPEND RUNTIME_LIBS $<TARGET_OBJECTS:hs_exec_core2>)
        set_target_properties(hs_exec_core2 PROPERTIES
            COMPILE_FLAGS "-march=core2"
@@ -1220,6 +1234,8 @@ else (FAT_RUNTIME)
            )
 
        add_library(hs_exec_corei7 OBJECT ${hs_exec_SRCS})
+       target_include_directories(hs_exec_corei7 SYSTEM PUBLIC ${hs_include_dirs})
+
        list(APPEND RUNTIME_LIBS $<TARGET_OBJECTS:hs_exec_corei7>)
        set_target_properties(hs_exec_corei7 PROPERTIES
            COMPILE_FLAGS "-march=corei7"
@@ -1227,6 +1243,8 @@ else (FAT_RUNTIME)
            )
 
        add_library(hs_exec_avx2 OBJECT ${hs_exec_SRCS} ${hs_exec_avx2_SRCS})
+       target_include_directories(hs_exec_avx2 SYSTEM PUBLIC ${hs_include_dirs})
+
        list(APPEND RUNTIME_LIBS $<TARGET_OBJECTS:hs_exec_avx2>)
        set_target_properties(hs_exec_avx2 PROPERTIES
            COMPILE_FLAGS "-march=core-avx2"
@@ -1234,6 +1252,8 @@ else (FAT_RUNTIME)
            )
        if (BUILD_AVX512)
            add_library(hs_exec_avx512 OBJECT ${hs_exec_SRCS} ${hs_exec_avx2_SRCS})
+           target_include_directories(hs_exec_avx512 SYSTEM PUBLIC ${hs_include_dirs})
+
            list(APPEND RUNTIME_LIBS $<TARGET_OBJECTS:hs_exec_avx512>)
            set_target_properties(hs_exec_avx512 PROPERTIES
                COMPILE_FLAGS "${SKYLAKE_FLAG}"
@@ -1242,6 +1262,8 @@ else (FAT_RUNTIME)
        endif (BUILD_AVX512)
        if (BUILD_AVX512VBMI)
            add_library(hs_exec_avx512vbmi OBJECT ${hs_exec_SRCS} ${hs_exec_avx2_SRCS})
+           target_include_directories(hs_exec_avx512vbmi SYSTEM PUBLIC ${hs_include_dirs})
+
            list(APPEND RUNTIME_LIBS $<TARGET_OBJECTS:hs_exec_avx512vbmi>)
            set_target_properties(hs_exec_avx512vbmi PROPERTIES
                COMPILE_FLAGS "${ICELAKE_FLAG}"
@@ -1253,6 +1275,7 @@ else (FAT_RUNTIME)
            ${hs_exec_common_SRCS}
            src/dispatcher.c
            )
+        target_include_directories(hs_exec_common SYSTEM PUBLIC ${hs_include_dirs})
 
        # hs_version.c is added explicitly to avoid some build systems that refuse to
        # create a lib without any src (I'm looking at you Xcode)
@@ -1328,7 +1351,7 @@ else (FAT_RUNTIME)
 endif (NOT FAT_RUNTIME)
 
 if (NOT BUILD_SHARED_LIBS)
-    install(TARGETS hs_runtime DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    #install(TARGETS hs_runtime DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 if (BUILD_STATIC_AND_SHARED OR BUILD_SHARED_LIBS)
@@ -1360,7 +1383,7 @@ if (BUILD_STATIC_LIBS)
 endif ()
 
 if (NOT BUILD_SHARED_LIBS)
-    install(TARGETS hs DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    #install(TARGETS hs DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 if (BUILD_STATIC_AND_SHARED OR BUILD_SHARED_LIBS)
@@ -1412,3 +1435,14 @@ option(BUILD_EXAMPLES "Build Hyperscan example code (default TRUE)" TRUE)
 if(NOT WIN32 AND BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+target_include_directories(hs_runtime SYSTEM PUBLIC ${hs_include_dirs})
+target_include_directories(hs_compile SYSTEM PUBLIC ${hs_include_dirs})
+target_include_directories(hs SYSTEM PUBLIC ${hs_include_dirs})
+
+target_compile_options(hs_runtime PRIVATE "-fpermissive")
+target_compile_options(hs_compile PRIVATE "-fpermissive")
+target_compile_options(hs PRIVATE "-fpermissive")
+
+
+
