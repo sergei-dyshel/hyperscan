@@ -316,6 +316,10 @@ if (RELEASE_BUILD)
     endif()
 endif()
 
+if (CMAKE_C_COMPILER_ID MATCHES "Clang" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "15")
+    add_compile_definitions(_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION)
+endif()
+
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     # This is a Linux-only feature for now - requires platform support
     # elsewhere
